@@ -246,13 +246,15 @@ check_tx (void *vprocessor)
         goto out;
     }
 
+#if 0
     if (priv->type == CHECK_TX_TYPE_UPLOAD &&
         seaf_quota_manager_check_quota (seaf->quota_mgr, repo_id) < 0) {
         priv->rsp_code = g_strdup(SC_QUOTA_FULL);
         priv->rsp_msg = g_strdup(SS_QUOTA_FULL);
         goto out;
     }
-    
+#endif
+
     char *perm = seaf_repo_manager_check_permission (seaf->repo_mgr,
                                                      repo_id, user, NULL);
     if (!perm ||

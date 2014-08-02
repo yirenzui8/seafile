@@ -40,6 +40,14 @@ int
 seaf_quota_manager_check_quota (SeafQuotaManager *mgr,
                                 const char *repo_id);
 
+/*
+ * Check if @repo_id's owner has free space after adding @delta.
+ */
+int
+seaf_quota_manager_check_quota_delta (SeafQuotaManager *mgr,
+                                      const char *repo_id,
+                                      gint64 delta);
+
 gint64
 seaf_quota_manager_get_user_usage (SeafQuotaManager *mgr, const char *user);
 

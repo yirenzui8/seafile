@@ -2146,6 +2146,55 @@ start_commit_upload (TransferTask *task)
 }
 
 static void
+on_commit_uploaded (CcnetProcessor *processor, gboolean success, void *data)
+{
+    TransferTask *task = data;
+
+    /* if the user stopped or canceled this task, stop processing. */
+    /* state #5, #9 */
+    if (task->state == TASK_STATE_CANCELED) {
+        transition_state (task, task->state, TASK_RT_STATE_FINISHED);
+        goto out;
+    }
+
+    if (success) {
+        start_fs_upload (task, processor->peer_id);
+    } else if (task->state != TASK_STATE_ERROR
+               && task->runtime_state == TASK_RT_STATE_COMMIT) {
+        transfer_task_with_proc_failure (
+            task, processor, TASK_ERR_UPLOAD_COMMIT);
+    }
+
+out:
+    g_signal_handlers_disconnect_by_func (processor, on_commit_uploaded, data);
+}
+
+static int
+start_check_quota (TransferTask *task)
+{
+    CcnetProcessor *processor;
+
+    processor = ccnet_proc_factory_create_remote_master_processor (
+        seaf->session->proc_factory, "seafile-check-quota", task->dest_id);
+    if (!processor) {
+        seaf_warning ("failed to create check-quota proc.\n");
+        transition_state_to_error (task, TASK_ERR_CHECK_UPLOAD_START);
+        return -1;
+    }
+
+    g_signal_connect (processor, "done", (GCallback)check_quota_cb, task);
+
+    ((SeafileCheckQuotaProc *)processor)->task = task;
+    if (ccnet_processor_startl (processor, NULL) < 0)
+    {
+        seaf_warning ("failed to start check-quota proc.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static void
 check_upload_cb (CcnetProcessor *processor, gboolean success, void *data)
 {
     TransferTask *task = data;

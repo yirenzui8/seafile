@@ -325,6 +325,51 @@ out:
     return ret;
 }
 
+int
+seaf_quota_manager_check_quota_delta (SeafQuotaManager *mgr,
+                                      const char *repo_id,
+                                      gint64 delta)
+{
+    SeafVirtRepo *vinfo;
+    const char *r_repo_id = repo_id;
+    char *user = NULL;
+    gint64 quota, usage;
+    int ret = 0;
+
+    /* If it's a virtual repo, check quota to origin repo. */
+    vinfo = seaf_repo_manager_get_virtual_repo_info (seaf->repo_mgr, repo_id);
+    if (vinfo)
+        r_repo_id = vinfo->origin_repo_id;
+
+    user = seaf_repo_manager_get_repo_owner (seaf->repo_mgr, r_repo_id);
+    if (user != NULL) {
+        quota = seaf_quota_manager_get_user_quota (mgr, user);
+    } else {
+        seaf_warning ("Repo %s has no owner.\n", r_repo_id);
+        ret = -1;
+        goto out;
+    }
+
+    if (quota == INFINITE_QUOTA)
+        goto out;
+
+    usage = seaf_quota_manager_get_user_usage (mgr, user);
+    if (usage < 0) {
+        ret = -1;
+        goto out;
+    }
+
+    usage += delta;
+
+    if (usage >= quota)
+        ret = -1;
+
+out:
+    seaf_virtual_repo_info_free (vinfo);
+    g_free (user);
+    return ret;
+}
+
 static gboolean
 get_total_size (SeafDBRow *row, void *vpsize)
 {
