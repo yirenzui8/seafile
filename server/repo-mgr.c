@@ -343,6 +343,39 @@ add_deleted_repo_record (SeafRepoManager *mgr, const char *repo_id)
 }
 
 static int
+add_deleted_repo_to_trash (SeafRepoManager *mgr, const char *repo_id)
+{
+    int ret = -1;
+
+    SeafBranch *branch = seaf_branch_manager_get_branch (mgr->seaf->branch_mgr,
+                                                         repo_id, "master");
+    if (!branch)
+        return ret;
+
+    char *owner = seaf_repo_manager_get_repo_owner (mgr, repo_id);
+    if (owner == NULL)
+        goto out;
+
+    gint64 size = seaf_repo_manager_get_repo_size (mgr, repo_id);
+    if (size == -1)
+        goto fail;
+
+    ret =  seaf_db_statement_query (mgr->seaf->db,
+                                    "INSERT INTO RepoTrash (repo_id, head_id, owner_id, size) "
+                                    "values (?, ?, ?, ?)", 4,
+                                    "string", repo_id,
+                                    "string", branch->commit_id,
+                                    "string", owner,
+                                    "int64", size);
+fail:
+    g_free (owner);
+out:
+    seaf_branch_unref (branch);
+
+    return ret;
+}
+
+static int
 remove_repo_ondisk (SeafRepoManager *mgr,
                     const char *repo_id,
                     gboolean add_deleted_record)
@@ -358,6 +391,9 @@ remove_repo_ondisk (SeafRepoManager *mgr,
      */
     if (seaf_db_statement_query (db, "DELETE FROM Repo WHERE repo_id = ?",
                                  1, "string", repo_id) < 0)
+        return -1;
+
+    if (add_deleted_repo_to_trash (mgr, repo_id) == -1)
         return -1;
 
     /* remove branch */
@@ -676,6 +712,12 @@ create_tables_mysql (SeafRepoManager *mgr)
     if (seaf_db_query (db, sql) < 0)
         return -1;
 
+    sql = "CREATE TABLE IF NOT EXISTS RepoTrash (repo_id CHAR(36) PRIMARY KEY,"
+        "head_id CHAR(40), owner_id VARCHAR(255), size bigint(20))"
+        "ENGINE=INNODB";
+    if (seaf_db_query (db, sql) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -797,6 +839,11 @@ create_tables_sqlite (SeafRepoManager *mgr)
     if (seaf_db_query (db, sql) < 0)
         return -1;
 
+    sql = "CREATE TABLE IF NOT EXISTS RepoTrash (repo_id CHAR(36) PRIMARY KEY,"
+        "head_id CHAR(40), owner_id VARCHAR(255), size BIGINT UNSIGNED)";
+    if (seaf_db_query (db, sql) < 0)
+        return -1;
+
     return 0;
 }
 
@@ -908,6 +955,11 @@ create_tables_pgsql (SeafRepoManager *mgr)
     }
 
     sql = "CREATE TABLE IF NOT EXISTS GarbageRepos (repo_id CHAR(36) PRIMARY KEY)";
+    if (seaf_db_query (db, sql) < 0)
+        return -1;
+
+    sql = "CREATE TABLE IF NOT EXISTS RepoTrash (repo_id CHAR(36) PRIMARY KEY,"
+        "head_id CHAR(40), owner_id VARCHAR(255), size bigint)";
     if (seaf_db_query (db, sql) < 0)
         return -1;
 
