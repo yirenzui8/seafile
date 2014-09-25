@@ -28,6 +28,13 @@ typedef struct SeafVirtRepo {
     char        base_commit[41];
 } SeafVirtRepo;
 
+typedef struct SeafTrashRepo {
+    char        repo_id[37];
+    char        head_id[41];
+    char        *owner_id;
+    gint64      size;
+} SeafTrashRepo;
+
 struct _SeafRepo {
     struct _SeafRepoManager *manager;
 
@@ -70,6 +77,9 @@ seaf_repo_ref (SeafRepo *repo);
 
 void
 seaf_repo_unref (SeafRepo *repo);
+
+void
+seaf_trash_repo_free (SeafTrashRepo *trash_repo);
 
 int
 seaf_repo_set_head (SeafRepo *repo, SeafBranch *branch);
@@ -136,6 +146,9 @@ seaf_repo_manager_repo_exists (SeafRepoManager *manager, const gchar *id);
 
 GList* 
 seaf_repo_manager_get_repo_list (SeafRepoManager *mgr, int start, int limit);
+
+GList*
+seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr, int start, int limit);
 
 GList *
 seaf_repo_manager_get_repo_id_list (SeafRepoManager *mgr);

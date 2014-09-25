@@ -60,6 +60,11 @@ class SeafileRpcClient(ccnet.RpcClientBase):
         pass
     get_repo_list = seafile_get_repo_list
 
+    @searpc_func("objlist", ["int", "int"])
+    def seafile_get_trash_repo_list():
+        pass
+    get_trash_repo_list = seafile_get_trash_repo_list
+
     @searpc_func("object", ["string"])
     def seafile_get_repo():
         pass
@@ -335,6 +340,11 @@ class SeafServerThreadedRpcClient(ccnet.RpcClientBase):
     def seafile_get_repo_list(start, limit):
         pass
     get_repo_list = seafile_get_repo_list
+
+    @searpc_func("objlist", ["int", "int"])
+    def seafile_get_trash_repo_list():
+        pass
+    get_trash_repo_list = seafile_get_trash_repo_list
 
     @searpc_func("int", ["string", "string", "string", "string"])
     def seafile_edit_repo(repo_id, name, description, user):

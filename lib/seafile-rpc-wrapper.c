@@ -134,6 +134,16 @@ seafile_get_repo_token (SearpcClient *client,
 }
 
 GList *
+seafile_get_trash_repo_list (SearpcClient *client,
+                             int offset,
+                             int limit, GError **error)
+{
+    return searpc_client_call__objlist (
+        client, "seafile_get_trash_repo_list", SEAFILE_TYPE_TRASH_REPO, error,
+        2, "int", offset, "int", limit);
+}
+
+GList *
 seafile_get_repo_list (SearpcClient *client,
                        int offset,
                        int limit, GError **error)

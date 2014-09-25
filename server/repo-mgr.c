@@ -123,6 +123,18 @@ seaf_repo_unref (SeafRepo *repo)
         seaf_repo_free (repo);
 }
 
+void
+seaf_trash_repo_free (SeafTrashRepo *trash_repo)
+{
+    if (!trash_repo)
+        return;
+
+    if (trash_repo->owner_id)
+        g_free (trash_repo->owner_id);
+
+    g_free (trash_repo);
+}
+
 static void
 set_head_common (SeafRepo *repo, SeafBranch *branch)
 {
@@ -1588,6 +1600,34 @@ collect_repo_id (SeafDBRow *row, void *data)
     return TRUE;
 }
 
+static gboolean
+collect_trash_repo (SeafDBRow *row, void *data)
+{
+    GList **trash_repos = data;
+    SeafTrashRepo *trash_repo;
+    const char *repo_id;
+    const char *head_id;
+    const char *owner_id;
+    gint64 size;
+
+    repo_id = seaf_db_row_get_column_text (row, 0);
+    head_id = seaf_db_row_get_column_text (row, 1);
+    owner_id = seaf_db_row_get_column_text (row, 2);
+    size = seaf_db_row_get_column_int64 (row, 3);
+
+    if (!repo_id || !head_id || !owner_id)
+        return FALSE;
+
+    trash_repo = g_new0 (SeafTrashRepo, 1);
+    strcpy (trash_repo->repo_id, repo_id);
+    strcpy (trash_repo->head_id, head_id);
+    trash_repo->owner_id = g_strdup (owner_id);
+    trash_repo->size = size;
+    *trash_repos = g_list_prepend (*trash_repos, trash_repo);
+
+    return TRUE;
+}
+
 GList *
 seaf_repo_manager_get_orphan_repo_list (SeafRepoManager *mgr)
 {
@@ -1709,6 +1749,30 @@ seaf_repo_manager_get_repo_ids_by_owner (SeafRepoManager *mgr,
     }
 
     return ret;
+}
+
+GList *
+seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr, int start, int limit)
+{
+    GList *trash_repos = NULL;
+    int rc;
+
+    if (start == -1 && limit == -1)
+        rc = seaf_db_statement_foreach_row (mgr->seaf->db,
+                                            "SELECT repo_id, head_id, owner_id, size FROM RepoTrash",
+                                            collect_trash_repo, &trash_repos,
+                                            0);
+    else
+        rc = seaf_db_statement_foreach_row (mgr->seaf->db,
+                                            "SELECT repo_id, head_id, owner_id, size FROM RepoTrash "
+                                            "ORDER BY repo_id LIMIT ? OFFSET ?",
+                                            collect_trash_repo, &trash_repos,
+                                            2, "int", limit, "int", start);
+
+    if (rc < 0)
+        return NULL;
+
+    return trash_repos;
 }
 
 /* Web access permission. */

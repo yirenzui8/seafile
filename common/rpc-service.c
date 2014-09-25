@@ -847,6 +847,34 @@ seafile_branch_gets (const char *repo_id, GError **error)
 }
 
 GList*
+seafile_get_trash_repo_list (int start, int limit, GError **error)
+{
+    GList *trash_repos = seaf_repo_manager_get_trash_repo_list (seaf->repo_mgr, start, limit);
+    GList *ret = NULL;
+    GList *iter = NULL;
+    SeafTrashRepo *trash_repo = NULL;
+    SeafileTrashRepo *seaf_trash_repo = NULL;
+
+
+    for (iter = trash_repos; iter; iter = iter->next) {
+        trash_repo = iter->data;
+        seaf_trash_repo = seafile_trash_repo_new ();
+
+        g_object_set (seaf_trash_repo, "repo_id", trash_repo->repo_id,
+                      "head_id", trash_repo->head_id,
+                      "owner_id", trash_repo->owner_id,
+                      "size", trash_repo->size, NULL);
+
+        ret = g_list_prepend (ret, seaf_trash_repo);
+        seaf_trash_repo_free (trash_repo);
+    }
+
+    g_list_free (trash_repos);
+
+    return ret;
+}
+
+GList*
 seafile_get_repo_list (int start, int limit, GError **error)
 {
     GList *repos = seaf_repo_manager_get_repo_list(seaf->repo_mgr, start, limit);
