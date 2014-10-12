@@ -2955,7 +2955,7 @@ load_repo (SeafRepoManager *manager, const char *repo_id)
 
     SeafRepo *repo = seaf_repo_new(repo_id, NULL, NULL);
     if (!repo) {
-        g_warning ("[repo mgr] failed to alloc repo.\n");
+        seaf_warning ("[repo mgr] failed to alloc repo.\n");
         return NULL;
     }
 
@@ -2965,7 +2965,7 @@ load_repo (SeafRepoManager *manager, const char *repo_id)
              repo->id);
     if (sqlite_foreach_selected_row (manager->priv->db, sql, 
                                      load_branch_cb, repo) < 0) {
-        g_warning ("Error read branch for repo %s.\n", repo->id);
+        seaf_warning ("Error read branch for repo %s.\n", repo->id);
         seaf_repo_free (repo);
         return NULL;
     }
@@ -2994,18 +2994,29 @@ load_repo (SeafRepoManager *manager, const char *repo_id)
                  seaf_repo_from_commit (repo, commit);
                  seaf_commit_unref (commit);
              } else {
-                 g_warning ("[repo-mgr] Can not find commit %s\n",
+                 seaf_warning ("[repo-mgr] Can not find commit %s\n",
                             branch->commit_id);
                  repo->is_corrupted = TRUE;
              }
 
              seaf_branch_unref (branch);
         } else {
-            g_warning ("[repo-mgr] Failed to get branch master");
+            seaf_warning ("[repo-mgr] Failed to get branch master");
             repo->is_corrupted = TRUE;
         }
     }
 
+    if (!repo->is_corrupted) {
+        repo->relay_id = load_repo_property (manager, repo->id, REPO_RELAY_ID);
+        if (repo->relay_id && strlen(repo->relay_id) != 40) {
+            g_free (repo->relay_id);
+            repo->relay_id = NULL;
+        }
+        if (!repo->relay_id) {
+            seaf_warning ("Relay for repo \"%s\"(%s) is invalid: %s\n", repo->name, repo->id);
+            repo->is_corrupted = TRUE;
+        }
+    }
     if (repo->is_corrupted) {
         seaf_repo_free (repo);
         /* remove_repo_ondisk (manager, repo_id); */
@@ -3026,12 +3037,6 @@ load_repo (SeafRepoManager *manager, const char *repo_id)
     if (repo->worktree)
         repo->worktree_invalid = FALSE;
 
-    repo->relay_id = load_repo_property (manager, repo->id, REPO_RELAY_ID);
-    if (repo->relay_id && strlen(repo->relay_id) != 40) {
-        g_free (repo->relay_id);
-        repo->relay_id = NULL;
-    }
-
     value = load_repo_property (manager, repo->id, REPO_NET_BROWSABLE);
     if (g_strcmp0(value, "true") == 0) {
         repo->net_browsable = 1;
@@ -3040,7 +3045,7 @@ load_repo (SeafRepoManager *manager, const char *repo_id)
 
     repo->email = load_repo_property (manager, repo->id, REPO_PROP_EMAIL);
     repo->token = load_repo_property (manager, repo->id, REPO_PROP_TOKEN);
-    
+
     if (repo->head != NULL && seaf_repo_check_worktree (repo) < 0) {
         if (seafile_session_config_get_allow_invalid_worktree(seaf)) {
             seaf_warning ("Worktree for repo \"%s\" is invalid, but still keep it.\n",
@@ -3152,6 +3157,7 @@ remove_deleted_repo (sqlite3_stmt *stmt, void *vmanager)
 static void
 load_repos (SeafRepoManager *manager, const char *seaf_dir)
 {
+    seaf_warning("load repos: %s\n", seaf_dir);
     sqlite3 *db = open_db(manager, seaf_dir);
     if (!db) return;
 
@@ -3159,13 +3165,13 @@ load_repos (SeafRepoManager *manager, const char *seaf_dir)
 
     sql = "SELECT repo_id FROM DeletedRepo";
     if (sqlite_foreach_selected_row (db, sql, remove_deleted_repo, manager) < 0) {
-        g_warning ("Error removing deleted repos.\n");
+        seaf_warning ("Error removing deleted repos.\n");
         return;
     }
 
     sql = "SELECT repo_id FROM Repo;";
     if (sqlite_foreach_selected_row (db, sql, load_repo_cb, manager) < 0) {
-        g_warning ("Error read repo db.\n");
+        seaf_warning ("Error read repo db.\n");
         return;
     }
 }

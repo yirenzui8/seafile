@@ -1562,6 +1562,9 @@ start_check_protocol_proc (SeafSyncManager *manager,
 static gboolean
 check_relay_status (SeafSyncManager *mgr, SeafRepo *repo)
 {
+    if (!repo->relay_id) {
+        return FALSE;
+    }
     gboolean is_ready = ccnet_peer_is_ready (seaf->ccnetrpc_client, repo->relay_id);
 
     ServerState *state = g_hash_table_lookup (mgr->server_states, repo->relay_id);
