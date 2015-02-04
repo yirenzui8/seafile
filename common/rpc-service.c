@@ -849,12 +849,17 @@ seafile_branch_gets (const char *repo_id, GError **error)
 GList*
 seafile_get_trash_repo_list (int start, int limit, GError **error)
 {
-    GList *trash_repos = seaf_repo_manager_get_trash_repo_list (seaf->repo_mgr, start, limit);
     GList *ret = NULL;
     GList *iter = NULL;
+    GList *trash_repos = NULL;
     SeafTrashRepo *trash_repo = NULL;
     SeafileTrashRepo *seaf_trash_repo = NULL;
 
+    trash_repos = seaf_repo_manager_get_trash_repo_list (seaf->repo_mgr,
+                                                         start, limit,
+                                                         error);
+    if (!trash_repos)
+        return NULL;
 
     for (iter = trash_repos; iter; iter = iter->next) {
         trash_repo = iter->data;
@@ -870,6 +875,25 @@ seafile_get_trash_repo_list (int start, int limit, GError **error)
     }
 
     g_list_free (trash_repos);
+
+    return ret;
+}
+
+int
+seafile_del_repo_from_trash (const char *repo_id, GError **error)
+{
+    int ret = 0;
+
+    if (!repo_id) {
+        g_set_error (error, SEAFILE_DOMAIN, SEAF_ERR_BAD_ARGS, "Argument should not be null");
+        return -1;
+    }
+    if (!is_uuid_valid (repo_id)) {
+        g_set_error (error, SEAFILE_DOMAIN, SEAF_ERR_BAD_ARGS, "Invalid repo id");
+        return -1;
+    }
+
+    ret = seaf_repo_manager_del_repo_from_trash (seaf->repo_mgr, repo_id, error);
 
     return ret;
 }

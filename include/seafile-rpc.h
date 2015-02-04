@@ -26,6 +26,9 @@ GList* seafile_get_repo_list (int start, int limit, GError **error);
  */
 GList* seafile_get_trash_repo_list(int start, int limit, GError **error);
 
+int
+seafile_del_repo_from_trash (const char *repo_id, GError **error);
+
 /**
  * seafile_get_commit_list:
  *

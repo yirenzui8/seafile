@@ -394,9 +394,6 @@ remove_repo_ondisk (SeafRepoManager *mgr,
 {
     SeafDB *db = mgr->seaf->db;
 
-    if (add_deleted_record)
-        add_deleted_repo_record (mgr, repo_id);
-
     /* Remove record in repo table first.
      * Once this is commited, we can gc the other tables later even if
      * we're interrupted.
@@ -405,8 +402,10 @@ remove_repo_ondisk (SeafRepoManager *mgr,
                                  1, "string", repo_id) < 0)
         return -1;
 
-    if (add_deleted_repo_to_trash (mgr, repo_id) == -1)
-        return -1;
+    if (add_deleted_record) {
+        if (add_deleted_repo_to_trash (mgr, repo_id) == -1)
+            return -1;
+    }
 
     /* remove branch */
     GList *p;
@@ -1752,7 +1751,10 @@ seaf_repo_manager_get_repo_ids_by_owner (SeafRepoManager *mgr,
 }
 
 GList *
-seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr, int start, int limit)
+seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr,
+                                       int start,
+                                       int limit,
+                                       GError **error)
 {
     GList *trash_repos = NULL;
     int rc;
@@ -1769,10 +1771,42 @@ seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr, int start, int limi
                                             collect_trash_repo, &trash_repos,
                                             2, "int", limit, "int", start);
 
-    if (rc < 0)
+    if (rc < 0) {
+        while (trash_repos) {
+            g_object_unref (trash_repos->data);
+            trash_repos = g_list_delete_link (trash_repos, trash_repos);
+        }
+        g_set_error (error, SEAFILE_DOMAIN, SEAF_ERR_GENERAL,
+                     "Failed to get trashed repo from db.");
         return NULL;
+    }
 
     return trash_repos;
+}
+
+int
+seaf_repo_manager_del_repo_from_trash (SeafRepoManager *mgr,
+                                       const char *repo_id,
+                                       GError **error)
+{
+    int ret = 0;
+
+    ret = seaf_db_statement_query (mgr->seaf->db,
+                                   "DELETE FROM RepoTrash WHERE repo_id = ?",
+                                   1, "string", repo_id);
+    if (ret < 0) {
+        g_set_error (error, SEAFILE_DOMAIN, SEAF_ERR_GENERAL,
+                     "DB error: delete from RepoTrash.");
+        return -1;
+    }
+
+    ret = add_deleted_repo_record (mgr, repo_id);
+    if (ret < 0) {
+        g_set_error (error, SEAFILE_DOMAIN, SEAF_ERR_GENERAL,
+                     "DB error: delete from GarbageRepos.");
+    }
+
+    return ret;
 }
 
 /* Web access permission. */

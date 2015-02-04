@@ -148,7 +148,15 @@ GList*
 seaf_repo_manager_get_repo_list (SeafRepoManager *mgr, int start, int limit);
 
 GList*
-seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr, int start, int limit);
+seaf_repo_manager_get_trash_repo_list (SeafRepoManager *mgr,
+                                       int start,
+                                       int limit,
+                                       GError **error);
+
+int
+seaf_repo_manager_del_repo_from_trash (SeafRepoManager *mgr,
+                                       const char *repo_id,
+                                       GError **error);
 
 GList *
 seaf_repo_manager_get_repo_id_list (SeafRepoManager *mgr);
